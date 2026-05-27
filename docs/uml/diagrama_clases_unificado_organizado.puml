@@ -1,0 +1,508 @@
+@startuml
+title Diagrama de clases unificado refinado — Gestión de Devoluciones y Garantías
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classFontSize 11
+skinparam packageFontSize 12
+left to right direction
+hide circle
+
+legend right
+  <b>Relaciones UML usadas</b>
+  <|-- Herencia / especialización
+  <|.. Implementación de interfaz
+  *-- Composición: el todo controla el ciclo de vida de la parte
+  o-- Agregación: relación todo-parte débil
+  --> Asociación dirigida / dependencia de uso
+  ..> Dependencia transversal entre módulos
+endlegend
+
+' ============================================================
+' SHARED / DOMAIN
+' ============================================================
+package "com.bigbank.ib.shared.domain" as shared {
+
+  enum TipoSolicitud {
+    DEVOLUCION
+    GARANTIA
+  }
+
+  enum PreferenciaSolucion {
+    REEMBOLSO
+    CAMBIO
+    REPARACION
+  }
+
+  abstract class Usuario {
+    +id: String
+    +nombre: String
+    +correo: String
+    +passwordHash: String
+    +rol: String
+    +iniciarSesion(): void
+    +cerrarSesion(): void
+  }
+
+  class Cliente
+  class Administrador
+  class Proveedor
+
+  class Sesion {
+    +token: String
+    +expiraEn: DateTime
+    +activa: boolean
+  }
+
+  class Pedido {
+    +id: String
+    +fechaCompra: Date
+    +total: Decimal
+  }
+
+  class Producto {
+    +id: String
+    +sku: String
+    +nombre: String
+    +fechaCompra: Date
+    +garantiaHasta: Date
+  }
+
+  class Evidencia {
+    +id: String
+    +tipoArchivo: String
+    +url: String
+    +tamano: long
+    +fechaCarga: DateTime
+  }
+
+  class Solicitud {
+    +id: String
+    +tipo: TipoSolicitud
+    +motivo: String
+    +descripcion: String
+    +cantidad: int
+    +preferenciaSolucion: PreferenciaSolucion
+    +fechaCreacion: DateTime
+    +fechaAsignacion: DateTime
+    +prioridad: String
+    +estado: String
+    +agregarEvidencia(evidencia:Evidencia): void
+    +cambiarEstado(nuevoEstado:EstadoSolicitud): void
+  }
+
+  class ComentarioInterno {
+    +id: String
+    +texto: String
+    +visibleCliente: boolean
+    +fecha: DateTime
+  }
+
+  class DecisionOperativa {
+    +id: String
+    +aprobada: boolean
+    +motivo: String
+    +fecha: DateTime
+  }
+
+  class DictamenTecnico {
+    +id: String
+    +resultado: String
+    +motivoTecnico: String
+    +observaciones: String
+    +fecha: DateTime
+  }
+
+  class FiltroReporte {
+    +fechaInicio: Date
+    +fechaFin: Date
+    +estado: String
+    +tipoCaso: String
+  }
+
+  class IndicadorMetrica {
+    +nombre: String
+    +valor: Decimal
+    +unidad: String
+  }
+
+  class Reporte {
+    +id: String
+    +titulo: String
+    +generadoEn: DateTime
+  }
+
+  class Archivo {
+    +nombre: String
+    +tipoMIME: String
+    +contenido: bytes
+  }
+
+  Usuario <|-- Cliente : especializa
+  Usuario <|-- Administrador : especializa
+  Usuario <|-- Proveedor : especializa
+
+  Usuario "1" *-- "0..*" Sesion : posee sesiones
+  Cliente "1" --> "0..*" Solicitud : crea
+  Proveedor "0..1" --> "0..*" Solicitud : atiende casos
+  Pedido "1" o-- "1..*" Producto : agrupa productos
+  Solicitud "0..*" --> "1" Pedido : se basa en
+  Solicitud "0..*" --> "1" Producto : reclama producto
+  Solicitud "1" *-- "0..*" Evidencia : contiene evidencias
+  Solicitud "1" *-- "0..*" ComentarioInterno : registra comentarios
+  Solicitud "1" *-- "0..*" DecisionOperativa : acumula decisiones
+  Solicitud "1" *-- "0..1" DictamenTecnico : recibe dictamen
+  Reporte "1" *-- "0..*" IndicadorMetrica : compone métricas
+  Reporte "1" --> "0..1" Archivo : se exporta como
+}
+
+' ============================================================
+' AUTH
+' ============================================================
+package "com.bigbank.ib.component.auth" as auth {
+
+  interface IUsuarioRepository {
+    +buscarPorCorreo(correo:String): Usuario
+    +guardarUltimoAcceso(usuarioId:String): void
+  }
+
+  interface ITokenService {
+    +generarToken(usuario:Usuario): String
+    +validarToken(token:String): boolean
+    +revocarToken(token:String): void
+  }
+
+  interface ISessionStore {
+    +crearSesion(usuario:Usuario, token:String): Sesion
+    +obtenerSesion(token:String): Sesion
+    +cerrarSesion(token:String): void
+  }
+
+  interface IAutorizacionPolicy {
+    +puedeAcceder(usuario:Usuario, recurso:String): boolean
+  }
+
+  class AuthService {
+    -usuarios: IUsuarioRepository
+    -tokens: ITokenService
+    -sesiones: ISessionStore
+    -autorizacion: IAutorizacionPolicy
+    +autenticar(correo:String, clave:String): Sesion
+    +cerrarSesion(token:String): void
+    +validarAcceso(usuario:Usuario, recurso:String): boolean
+  }
+
+  class LoginController {
+    +login(correo:String, clave:String): Sesion
+    +logout(token:String): void
+  }
+
+  LoginController "1" --> "1" AuthService : delega autenticación
+  AuthService "1" --> "1" IUsuarioRepository : consulta usuarios
+  AuthService "1" --> "1" ITokenService : genera tokens
+  AuthService "1" --> "1" ISessionStore : administra sesiones
+  AuthService "1" --> "1" IAutorizacionPolicy : valida permisos
+  AuthService "1" --> "0..*" Sesion : crea sesiones
+}
+
+' ============================================================
+' REQUESTS / SOLICITUDES
+' ============================================================
+package "com.bigbank.ib.component.requests" as requests {
+
+  interface ISolicitudRepository {
+    +guardar(solicitud:Solicitud): Solicitud
+    +buscarPorId(id:String): Solicitud
+    +buscarPorCliente(clienteId:String): List<Solicitud>
+  }
+
+  interface IEvidenciaRepository {
+    +guardar(evidencia:Evidencia): Evidencia
+    +buscarPorSolicitud(solicitudId:String): List<Evidencia>
+    +listarPorSolicitud(solicitudId:String): List<Evidencia>
+  }
+
+  interface INotificacionService {
+    +notificarCambio(solicitud:Solicitud, evento:String): void
+    +notificarCambio(solicitudId:String, evento:String): void
+  }
+
+  interface ReglaElegibilidadStrategy {
+    +evaluar(pedido:Pedido, producto:Producto): ResultadoElegibilidad
+  }
+
+  class ReglaElegibilidadDevolucion
+  class ReglaElegibilidadGarantia
+
+  class ContextoElegibilidad {
+    -estrategia: ReglaElegibilidadStrategy
+    +establecerEstrategia(estrategia:ReglaElegibilidadStrategy): void
+    +evaluar(pedido:Pedido, producto:Producto): ResultadoElegibilidad
+  }
+
+  class ResultadoElegibilidad {
+    +elegible: boolean
+    +motivo: String
+  }
+
+  class SolicitudBuilder {
+    +conPedido(pedido:Pedido): SolicitudBuilder
+    +conProducto(producto:Producto): SolicitudBuilder
+    +conTipo(tipo:TipoSolicitud): SolicitudBuilder
+    +conMotivo(motivo:String): SolicitudBuilder
+    +conPreferencia(preferencia:PreferenciaSolucion): SolicitudBuilder
+    +agregarEvidencia(evidencia:Evidencia): SolicitudBuilder
+    +build(): Solicitud
+  }
+
+  interface ISolicitudObserver {
+    +actualizar(evento:String): void
+  }
+
+  interface ISolicitudSubject {
+    +suscribir(observer:ISolicitudObserver): void
+    +desuscribir(observer:ISolicitudObserver): void
+    +notificar(evento:String): void
+  }
+
+  class SolicitudNotifier {
+    -observadores: List<ISolicitudObserver>
+    +suscribir(observer:ISolicitudObserver): void
+    +desuscribir(observer:ISolicitudObserver): void
+    +notificar(evento:String): void
+  }
+
+  abstract class EstadoSolicitud {
+    +aprobar(solicitud:Solicitud): void
+    +rechazar(solicitud:Solicitud): void
+    +solicitarInformacion(solicitud:Solicitud): void
+    +cerrar(solicitud:Solicitud): void
+  }
+
+  class SolicitudCreada
+  class SolicitudEnRevision
+  class SolicitudPendienteInformacion
+  class SolicitudAprobada
+  class SolicitudRechazada
+  class SolicitudCerrada
+
+  class SolicitudService {
+    -repositorio: ISolicitudRepository
+    -evidencias: IEvidenciaRepository
+    -notificaciones: INotificacionService
+    -builder: SolicitudBuilder
+    -elegibilidad: ContextoElegibilidad
+    -notifier: SolicitudNotifier
+    +crearSolicitud(): Solicitud
+    +consultarHistorial(clienteId:String): List<Solicitud>
+    +adjuntarEvidencia(solicitudId:String, evidencia:Evidencia): void
+    +cambiarEstado(solicitudId:String, estado:EstadoSolicitud): void
+  }
+
+  ReglaElegibilidadStrategy <|.. ReglaElegibilidadDevolucion : implementa
+  ReglaElegibilidadStrategy <|.. ReglaElegibilidadGarantia : implementa
+  ContextoElegibilidad "1" --> "1" ReglaElegibilidadStrategy : usa estrategia
+  ContextoElegibilidad "1" --> "1" ResultadoElegibilidad : retorna resultado
+
+  SolicitudBuilder "1" --> "1" Solicitud : construye
+  SolicitudBuilder "1" --> "1" Pedido : asigna pedido
+  SolicitudBuilder "1" --> "1" Producto : asigna producto
+  SolicitudBuilder "1" --> "0..*" Evidencia : adjunta evidencia
+
+  ISolicitudSubject <|.. SolicitudNotifier : implementa
+  SolicitudNotifier "1" o-- "0..*" ISolicitudObserver : mantiene suscriptores
+
+  EstadoSolicitud <|-- SolicitudCreada : especializa
+  EstadoSolicitud <|-- SolicitudEnRevision : especializa
+  EstadoSolicitud <|-- SolicitudPendienteInformacion : especializa
+  EstadoSolicitud <|-- SolicitudAprobada : especializa
+  EstadoSolicitud <|-- SolicitudRechazada : especializa
+  EstadoSolicitud <|-- SolicitudCerrada : especializa
+
+  Solicitud "1" --> "1" EstadoSolicitud : delega transición
+
+  SolicitudService "1" --> "1" ISolicitudRepository : persiste solicitudes
+  SolicitudService "1" --> "1" IEvidenciaRepository : persiste evidencias
+  SolicitudService "1" --> "1" INotificacionService : envía avisos
+  SolicitudService "1" --> "1" SolicitudBuilder : crea con builder
+  SolicitudService "1" --> "1" ContextoElegibilidad : evalúa elegibilidad
+  SolicitudService "1" --> "1" SolicitudNotifier : publica eventos
+  SolicitudService "1" --> "1" EstadoSolicitud : cambia estado
+}
+
+' ============================================================
+' OPERATION / GESTIÓN OPERATIVA
+' ============================================================
+package "com.bigbank.ib.component.operation" as operation {
+
+  interface ISolicitudConsultaRepository {
+    +listarPendientes(): List<Solicitud>
+    +buscarPorId(id:String): Solicitud
+  }
+
+  interface IComentarioRepository {
+    +guardar(comentario:ComentarioInterno): ComentarioInterno
+    +listarPorSolicitud(solicitudId:String): List<ComentarioInterno>
+  }
+
+  interface IDecisionOperativaRepository {
+    +guardar(decision:DecisionOperativa): DecisionOperativa
+  }
+
+  class BandejaOperativaService {
+    -solicitudes: ISolicitudConsultaRepository
+    +listarPendientes(): List<Solicitud>
+    +filtrar(estado:String, fechaInicio:Date, fechaFin:Date, prioridad:String): List<Solicitud>
+    +verDetalle(solicitudId:String): Solicitud
+  }
+
+  class RevisionOperativaService {
+    -comentarios: IComentarioRepository
+    -decisiones: IDecisionOperativaRepository
+    -notificaciones: INotificacionService
+    +agregarComentario(solicitudId:String, texto:String): ComentarioInterno
+    +solicitarInformacionAdicional(solicitudId:String, motivo:String): void
+    +aprobar(solicitudId:String, motivo:String): DecisionOperativa
+    +rechazar(solicitudId:String, motivo:String): DecisionOperativa
+  }
+
+  class DashboardOperativoController {
+    +getDashboard(): List<Solicitud>
+    +verDetalle(solicitudId:String): Solicitud
+    +registrarDecision(): void
+  }
+
+  DashboardOperativoController "1" --> "1" BandejaOperativaService : consulta bandeja
+  DashboardOperativoController "1" --> "1" RevisionOperativaService : registra revisión
+  BandejaOperativaService "1" --> "1" ISolicitudConsultaRepository : lee solicitudes
+  RevisionOperativaService "1" --> "1" IComentarioRepository : guarda comentarios
+  RevisionOperativaService "1" --> "1" IDecisionOperativaRepository : guarda decisiones
+  RevisionOperativaService "1" --> "1" INotificacionService : notifica cambios
+  RevisionOperativaService "1" --> "0..*" DecisionOperativa : emite decisión
+}
+
+' ============================================================
+' PROVIDERS / GESTIÓN DE PROVEEDORES
+' ============================================================
+package "com.bigbank.ib.component.providers" as providers {
+
+  interface ICasoAsignadoRepository {
+    +obtenerAsignado(proveedorId:String): Solicitud
+    +actualizarEstado(solicitudId:String, estado:String): void
+  }
+
+  interface IGarantiaService {
+    +validarVigencia(producto:Producto): boolean
+  }
+
+  interface IInventarioService {
+    +verificarStock(sku:String): boolean
+  }
+
+  interface IDictamenRepository {
+    +guardar(dictamen:DictamenTecnico): DictamenTecnico
+  }
+
+  class GestionProveedorService {
+    -casos: ICasoAsignadoRepository
+    -garantia: IGarantiaService
+    -evidencias: IEvidenciaRepository
+    -inventario: IInventarioService
+    -dictamenes: IDictamenRepository
+    +cargarCaso(proveedorId:String): Solicitud
+    +validarGarantia(producto:Producto): boolean
+    +registrarDictamen(solicitudId:String, dictamen:DictamenTecnico): DictamenTecnico
+    +autorizarReparacion(solicitudId:String): void
+    +autorizarReemplazo(solicitudId:String): void
+  }
+
+  class RecepcionProductoService {
+    +registrarRecepcion(solicitudId:String, direccion:String, costoEnvio:Decimal): void
+    +marcarEnEspera(solicitudId:String): void
+  }
+
+  GestionProveedorService "1" --> "1" ICasoAsignadoRepository : consulta casos
+  GestionProveedorService "1" --> "1" IGarantiaService : valida garantía
+  GestionProveedorService "1" --> "1" IEvidenciaRepository : revisa evidencias
+  GestionProveedorService "1" --> "1" IInventarioService : verifica stock
+  GestionProveedorService "1" --> "1" IDictamenRepository : guarda dictamen
+  GestionProveedorService "1" --> "0..1" DictamenTecnico : registra dictamen
+  GestionProveedorService "1" --> "1" Producto : evalúa producto
+  RecepcionProductoService "1" --> "1" Solicitud : recibe producto
+}
+
+' ============================================================
+' REPORTS / REPORTES Y MÉTRICAS
+' ============================================================
+package "com.bigbank.ib.component.reports" as reports {
+
+  interface IConsultaReportesRepository {
+    +obtenerDatos(filtro:FiltroReporte): List<Object>
+  }
+
+  interface IExportadorReporte {
+    +exportar(reporte:Reporte): Archivo
+  }
+
+  class ExportadorCSV
+  class ExportadorPDF
+
+  class ReporteService {
+    -consultas: IConsultaReportesRepository
+    -exportadores: IExportadorReporte
+    +generarReporte(filtro:FiltroReporte): Reporte
+    +exportar(reporte:Reporte, formato:String): Archivo
+    +calcularMetricas(filtro:FiltroReporte): List<IndicadorMetrica>
+  }
+
+  class ReportesController {
+    +consultar(filtro:FiltroReporte): Reporte
+    +exportar(reporteId:String, formato:String): Archivo
+  }
+
+  IExportadorReporte <|.. ExportadorCSV : implementa
+  IExportadorReporte <|.. ExportadorPDF : implementa
+  ReporteService "1" --> "1" IConsultaReportesRepository : obtiene datos
+  ReporteService "1" --> "1..*" IExportadorReporte : selecciona exportador
+  ReporteService "1" --> "0..*" Reporte : genera reportes
+  ReporteService "1" --> "0..*" Archivo : produce archivos
+  ReporteService "1" --> "1" FiltroReporte : aplica filtro
+  ReporteService "1" --> "0..*" IndicadorMetrica : calcula métricas
+  ReportesController "1" --> "1" ReporteService : delega reportes
+}
+
+' ============================================================
+' FACADE / FACHADA TRANSVERSAL
+' ============================================================
+package "com.bigbank.ib.component.facade" as facade {
+
+  class ServicioGestionDevoluciones {
+    -authService: AuthService
+    -solicitudService: SolicitudService
+    -bandejaOperativaService: BandejaOperativaService
+    -gestionProveedorService: GestionProveedorService
+    -reporteService: ReporteService
+    +autenticarUsuario(correo:String, clave:String): void
+    +iniciarSolicitud(): void
+    +consultarDashboardOperativo(): void
+    +registrarDictamenProveedor(): void
+    +generarReporte(): void
+  }
+
+  ServicioGestionDevoluciones "1" --> "1" AuthService : coordina autenticación
+  ServicioGestionDevoluciones "1" --> "1" SolicitudService : coordina solicitudes
+  ServicioGestionDevoluciones "1" --> "1" BandejaOperativaService : coordina operación
+  ServicioGestionDevoluciones "1" --> "1" GestionProveedorService : coordina proveedor
+  ServicioGestionDevoluciones "1" --> "1" ReporteService : coordina reportes
+}
+
+' ============================================================
+' DEPENDENCIAS TRANSVERSALES ENTRE MÓDULOS
+' ============================================================
+' Para evitar líneas largas y cruces innecesarios dentro del diagrama
+' de clases, las dependencias entre paquetes se documentan en una vista
+' separada: mapa_dependencias_modulos_organizado.puml.
+' En este diagrama principal se conservan las relaciones UML entre clases.
+
+@enduml
