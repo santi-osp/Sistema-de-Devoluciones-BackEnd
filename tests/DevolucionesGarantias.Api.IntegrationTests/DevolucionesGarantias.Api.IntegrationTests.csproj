@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DevolucionesGarantias.Api\DevolucionesGarantias.Api.csproj" />
+    <ProjectReference Include="..\..\src\DevolucionesGarantias.Application\DevolucionesGarantias.Application.csproj" />
+    <ProjectReference Include="..\..\src\DevolucionesGarantias.Infrastructure\DevolucionesGarantias.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\DevolucionesGarantias.Persistence\DevolucionesGarantias.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\DevolucionesGarantias.Shared\DevolucionesGarantias.Shared.csproj" />
+  </ItemGroup>
+</Project>
+
