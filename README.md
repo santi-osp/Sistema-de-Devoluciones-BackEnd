@@ -1,6 +1,41 @@
-# DevolucionesGarantias Backend
+# Sistema de Gestion de Devoluciones y Garantias - Backend
 
-Backend .NET 8 Web API para la App de Gestion de Devoluciones y Garantias de un e-commerce.
+Backend .NET 8 Web API para la app de gestion de devoluciones y garantias de un e-commerce. Expone los servicios REST consumidos por el frontend Angular y concentra la logica de negocio, validaciones, persistencia, autenticacion, reportes y almacenamiento de evidencias.
+
+## Integrantes
+
+1. Andrés Felipe Méndez Cano
+2. Santiago Ospina Arango
+3. Juan Pablo Restrepo Muñoz
+4. Daniel Bedoya Naranjo
+
+## Tecnologias utilizadas
+
+- .NET 8 Web API.
+- ASP.NET Core.
+- Entity Framework Core.
+- PostgreSQL compatible con Npgsql, usando la clave `ConnectionStrings:NeonPostgres`.
+- Supabase Storage para evidencias y reportes exportados.
+- JWT Bearer Authentication.
+- Swagger / OpenAPI.
+- Arquitectura por capas.
+- Patrones GoF: Strategy, Builder, Observer, State y Facade.
+- Repositorios y Unit of Work.
+- Exportacion CSV/PDF.
+
+## Funcionalidades implementadas
+
+- Login JWT y cierre de sesion.
+- Consulta del usuario autenticado.
+- Autorizacion por roles: Cliente, Administrador y Proveedor.
+- Cliente: pedidos, productos, elegibilidad, solicitudes, detalle, timeline y evidencias.
+- Administrador: dashboard, bandeja operativa, detalle, comentarios, informacion adicional, asignacion a proveedor, aprobacion, rechazo y reportes.
+- Proveedor: casos asignados, validacion de garantia, dictamen tecnico, autorizaciones y recepcion.
+- Persistencia de datos con EF Core y PostgreSQL.
+- Carga de evidencias a Supabase Storage.
+- Exportacion de reportes en CSV/PDF.
+- Middleware global de errores.
+- Auditoria de acciones relevantes.
 
 ## Requisitos
 
@@ -79,10 +114,15 @@ Swagger incluye Bearer JWT. Usa el boton `Authorize` con `Bearer <token>`.
 
 Los usuarios demo existen solo como seed de Development:
 
-- `cliente.demo@ecommerce.com`
-- `admin.demo@ecommerce.com`
-- `proveedor.demo@ecommerce.com`
-- `analista.demo@ecommerce.com`
+- Cliente: `cliente.demo@ecommerce.com`
+- Administrador: `admin.demo@ecommerce.com`
+- Proveedor: `proveedor.demo@ecommerce.com`
+
+Contrasena para los usuarios demo:
+
+```text
+DevDemo123!
+```
 
 La contrasena demo debe tratarse como dato local de desarrollo, nunca productivo.
 
@@ -90,7 +130,7 @@ La contrasena demo debe tratarse como dato local de desarrollo, nunca productivo
 
 - Login JWT y roles.
 - Cliente: pedidos, productos, elegibilidad, solicitudes, evidencias.
-- Administrador/Analista: dashboard, bandeja, detalle, comentarios, informacion adicional, decisiones y reportes.
+- Administrador: dashboard, bandeja, detalle, comentarios, informacion adicional, decisiones y reportes.
 - Proveedor: casos asignados, validacion de garantia, dictamen, autorizaciones y recepcion.
 - Supabase Storage para evidencias.
 - Exportacion CSV/PDF de reportes.
