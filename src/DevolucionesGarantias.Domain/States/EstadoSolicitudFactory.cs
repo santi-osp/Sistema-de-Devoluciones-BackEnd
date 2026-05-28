@@ -13,6 +13,8 @@ public static class EstadoSolicitudFactory
             EstadoSolicitudEnum.Aprobada => new SolicitudAprobada(),
             EstadoSolicitudEnum.Rechazada => new SolicitudRechazada(),
             EstadoSolicitudEnum.Cerrada => new SolicitudCerrada(),
+            EstadoSolicitudEnum.EnRevisionProveedor => new SolicitudEnRevisionProveedor(),
+            EstadoSolicitudEnum.PendienteDecisionFinalAdmin => new SolicitudPendienteDecisionFinalAdmin(),
             _ => new SolicitudCreada()
         };
 }

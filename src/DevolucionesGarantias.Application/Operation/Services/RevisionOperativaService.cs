@@ -1,8 +1,10 @@
+using System.Text.Json;
 using DevolucionesGarantias.Application.Common.Interfaces;
 using DevolucionesGarantias.Application.Operation.DTOs;
 using DevolucionesGarantias.Application.Operation.Interfaces;
 using DevolucionesGarantias.Application.Operation.Validators;
 using DevolucionesGarantias.Domain.Entities;
+using DevolucionesGarantias.Domain.Enums;
 using DevolucionesGarantias.Domain.Exceptions;
 
 namespace DevolucionesGarantias.Application.Operation.Services;
@@ -65,6 +67,63 @@ public sealed class RevisionOperativaService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<SendToProviderReviewResultDto> SendToReviewAsync(
+        Guid requestId,
+        SendToProviderReviewDto request,
+        Guid updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var solicitud = await _operations.GetByIdAsync(requestId, cancellationToken)
+            ?? throw new BusinessRuleException("Solicitud no encontrada.");
+
+        if (solicitud.EstadoActual is not (EstadoSolicitudEnum.Creada or EstadoSolicitudEnum.PendienteInformacion))
+        {
+            throw new BusinessRuleException("Solo las solicitudes creadas o pendientes de informacion pueden enviarse a revision del proveedor.");
+        }
+
+        var provider = request.ProviderId.HasValue
+            ? await _operations.GetProviderByIdAsync(request.ProviderId.Value, cancellationToken)
+            : await _operations.GetDefaultProviderAsync(cancellationToken);
+
+        if (provider is null)
+        {
+            throw new BusinessRuleException("No hay un proveedor disponible para asignar la solicitud.");
+        }
+
+        var assignedCase = await _operations.GetAssignedCaseByRequestAsync(requestId, cancellationToken);
+        if (assignedCase is null)
+        {
+            assignedCase = new CasoAsignado(requestId, provider.Id, updatedBy.ToString());
+            await _operations.AddAssignedCaseAsync(assignedCase, cancellationToken);
+        }
+        else if (assignedCase.ProveedorId != provider.Id)
+        {
+            throw new BusinessRuleException("La solicitud ya esta asignada a otro proveedor.");
+        }
+        else
+        {
+            assignedCase.CambiarEstado(EstadoAsignacionProveedor.Asignado);
+        }
+
+        solicitud.EnviarARevision(updatedBy.ToString());
+
+        await _audit.RegisterAsync(
+            updatedBy,
+            "SendToProviderReview",
+            nameof(Solicitud),
+            requestId.ToString(),
+            null,
+            JsonSerializer.Serialize(new { providerId = provider.Id, status = solicitud.EstadoActual.ToString() }),
+            cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new SendToProviderReviewResultDto(
+            solicitud.Id,
+            provider.Id,
+            solicitud.EstadoActual,
+            assignedCase.Estado);
+    }
+
     public async Task<DecisionResultDto> DecideAsync(DecisionDto request, Guid decidedBy, CancellationToken cancellationToken = default)
     {
         _decisionValidator.ValidateAndThrow(request);
@@ -84,6 +143,10 @@ public sealed class RevisionOperativaService
         var decision = new DecisionOperativa(request.RequestId, request.Approved, request.Reason, decidedBy.ToString());
         await _decisions.AddAsync(decision, cancellationToken);
         await _audit.RegisterAsync(decidedBy, "OperationalDecision", nameof(Solicitud), request.RequestId.ToString(), null, request.Reason, cancellationToken);
+
+        var assignedCase = await _operations.GetAssignedCaseByRequestAsync(request.RequestId, cancellationToken);
+        assignedCase?.CambiarEstado(EstadoAsignacionProveedor.Cerrado);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new DecisionResultDto(decision.Id, decision.SolicitudId, decision.Approved, decision.Motivo, decision.DecidedAt);

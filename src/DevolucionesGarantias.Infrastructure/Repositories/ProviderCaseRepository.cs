@@ -30,6 +30,10 @@ public sealed class ProviderCaseRepository : IProviderCaseRepository
             .Include(request => request.Timeline)
             .FirstOrDefaultAsync(request => request.Id == requestId, cancellationToken);
 
+    public Task<ValidacionGarantia?> GetWarrantyValidationByRequestAsync(Guid requestId, CancellationToken cancellationToken = default) =>
+        _dbContext.ValidacionesGarantia
+            .FirstOrDefaultAsync(validation => validation.SolicitudId == requestId, cancellationToken);
+
     public Task AddWarrantyValidationAsync(ValidacionGarantia validation, CancellationToken cancellationToken = default) =>
         _dbContext.ValidacionesGarantia.AddAsync(validation, cancellationToken).AsTask();
 

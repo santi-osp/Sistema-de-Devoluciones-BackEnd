@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DevolucionesGarantias.Application.Common.Interfaces;
 using DevolucionesGarantias.Domain.Entities;
 using DevolucionesGarantias.Infrastructure.Repositories;
@@ -31,12 +32,32 @@ public sealed class AuditService : IAuditService
             action,
             entityName,
             entityId,
-            oldValues,
-            newValues,
+            NormalizeJsonValue(oldValues),
+            NormalizeJsonValue(newValues),
             httpContext?.Connection.RemoteIpAddress?.ToString(),
             httpContext?.Request.Headers.UserAgent.ToString(),
             httpContext?.TraceIdentifier ?? Guid.NewGuid().ToString("N"));
 
         await _auditLogs.AddAsync(auditLog, cancellationToken);
+    }
+
+    private static string? NormalizeJsonValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+
+        try
+        {
+            using var _ = JsonDocument.Parse(trimmed);
+            return trimmed;
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.Serialize(trimmed);
+        }
     }
 }

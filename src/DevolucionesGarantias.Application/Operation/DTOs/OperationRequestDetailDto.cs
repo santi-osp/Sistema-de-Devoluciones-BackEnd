@@ -1,4 +1,5 @@
 using DevolucionesGarantias.Application.Requests.DTOs;
+using DevolucionesGarantias.Application.Providers.DTOs;
 using DevolucionesGarantias.Domain.Enums;
 
 namespace DevolucionesGarantias.Application.Operation.DTOs;
@@ -13,5 +14,7 @@ public sealed record OperationRequestDetailDto(
     string Reason,
     string Description,
     int Quantity,
+    PreferenciaSolucion PreferredSolution,
     IReadOnlyCollection<EvidenceDto> Evidence,
-    IReadOnlyCollection<InternalCommentDto> Comments);
+    IReadOnlyCollection<InternalCommentDto> Comments,
+    ProviderReviewDto? ProviderReview);

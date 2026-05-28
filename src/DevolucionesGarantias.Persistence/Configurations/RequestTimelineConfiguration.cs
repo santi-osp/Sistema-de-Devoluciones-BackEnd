@@ -12,7 +12,7 @@ public sealed class RequestTimelineConfiguration : IEntityTypeConfiguration<Requ
 
         builder.HasKey(timeline => timeline.Id);
 
-        builder.Property(timeline => timeline.Id).HasColumnName("id");
+        builder.Property(timeline => timeline.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(timeline => timeline.SolicitudId).HasColumnName("request_id").IsRequired();
         builder.Property(timeline => timeline.Evento).HasColumnName("event").HasMaxLength(600).IsRequired();
         builder.Property(timeline => timeline.EstadoAnterior).HasColumnName("previous_status").HasConversion<string>().HasMaxLength(40);

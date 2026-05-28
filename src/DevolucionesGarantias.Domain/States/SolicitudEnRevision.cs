@@ -16,6 +16,12 @@ public sealed class SolicitudEnRevision : EstadoSolicitud
         solicitud.AplicarEstado(new SolicitudAprobada(), updatedBy, motivo);
     }
 
+    public override void CompletarRevisionProveedor(Solicitud solicitud, string motivo, string? updatedBy = null)
+    {
+        EnsureMotivo(motivo);
+        solicitud.AplicarEstado(new SolicitudPendienteDecisionFinalAdmin(), updatedBy, motivo);
+    }
+
     public override void Rechazar(Solicitud solicitud, string motivo, string? updatedBy = null)
     {
         EnsureMotivo(motivo);

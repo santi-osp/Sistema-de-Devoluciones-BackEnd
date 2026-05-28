@@ -98,6 +98,12 @@ public sealed class Solicitud : IEntity, IAuditableEntity
         _estado.EnviarARevision(this, updatedBy);
     }
 
+    public void CompletarRevisionProveedor(string motivo, string? updatedBy = null)
+    {
+        EnsureEstadoSincronizado();
+        _estado.CompletarRevisionProveedor(this, motivo, updatedBy);
+    }
+
     public void Aprobar(string motivo, string? updatedBy = null)
     {
         EnsureEstadoSincronizado();
@@ -130,7 +136,13 @@ public sealed class Solicitud : IEntity, IAuditableEntity
         switch (nuevoEstado.Value)
         {
             case EstadoSolicitudEnum.EnRevision:
+                AplicarEstado(new SolicitudEnRevision(), updatedBy, reason ?? "Solicitud en revision operativa.");
+                break;
+            case EstadoSolicitudEnum.EnRevisionProveedor:
                 _estado.EnviarARevision(this, updatedBy);
+                break;
+            case EstadoSolicitudEnum.PendienteDecisionFinalAdmin:
+                _estado.CompletarRevisionProveedor(this, reason ?? "Revision del proveedor completada.", updatedBy);
                 break;
             case EstadoSolicitudEnum.PendienteInformacion:
                 _estado.SolicitarInformacion(this, reason ?? string.Empty, updatedBy);

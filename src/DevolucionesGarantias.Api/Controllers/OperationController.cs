@@ -58,6 +58,16 @@ public sealed class OperationController : ApiControllerBase
         return Ok(ApiResponse<object>.Ok(new { requested = true }));
     }
 
+    [HttpPost("requests/{id:guid}/send-to-review")]
+    public async Task<ActionResult<ApiResponse<SendToProviderReviewResultDto>>> SendToReview(
+        Guid id,
+        SendToProviderReviewDto? request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _revision.SendToReviewAsync(id, request ?? new SendToProviderReviewDto(), CurrentUserId, cancellationToken);
+        return Ok(ApiResponse<SendToProviderReviewResultDto>.Ok(result));
+    }
+
     [HttpPost("requests/{id:guid}/approve")]
     public async Task<ActionResult<ApiResponse<DecisionResultDto>>> Approve(Guid id, DecisionRequest request, CancellationToken cancellationToken)
     {

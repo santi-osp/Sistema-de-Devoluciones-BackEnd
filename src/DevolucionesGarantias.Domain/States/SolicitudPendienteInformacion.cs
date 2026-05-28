@@ -12,7 +12,7 @@ public sealed class SolicitudPendienteInformacion : EstadoSolicitud
 
     public override void EnviarARevision(Solicitud solicitud, string? updatedBy = null)
     {
-        solicitud.AplicarEstado(new SolicitudEnRevision(), updatedBy, "Informacion recibida; solicitud vuelve a revision.");
+        solicitud.AplicarEstado(new SolicitudEnRevisionProveedor(), updatedBy, "Informacion recibida; solicitud enviada a revision del proveedor.");
     }
 
     public override void Rechazar(Solicitud solicitud, string motivo, string? updatedBy = null)

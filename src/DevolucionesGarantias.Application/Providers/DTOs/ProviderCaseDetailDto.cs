@@ -8,4 +8,5 @@ public sealed record ProviderCaseDetailDto(
     Guid RequestId,
     Guid ProviderId,
     EstadoAsignacionProveedor Status,
-    RequestDetailDto Request);
+    RequestDetailDto Request,
+    ProviderReviewDto Review);

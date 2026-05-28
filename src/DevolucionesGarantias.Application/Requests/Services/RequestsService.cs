@@ -138,6 +138,8 @@ public sealed class RequestsService
             EstadoSolicitudEnum.Aprobada => new SolicitudAprobada(),
             EstadoSolicitudEnum.Rechazada => new SolicitudRechazada(),
             EstadoSolicitudEnum.Cerrada => new SolicitudCerrada(),
+            EstadoSolicitudEnum.EnRevisionProveedor => new SolicitudEnRevisionProveedor(),
+            EstadoSolicitudEnum.PendienteDecisionFinalAdmin => new SolicitudPendienteDecisionFinalAdmin(),
             _ => throw new InvalidStateTransitionException($"No se permite cambiar explicitamente a {status}.")
         };
 }

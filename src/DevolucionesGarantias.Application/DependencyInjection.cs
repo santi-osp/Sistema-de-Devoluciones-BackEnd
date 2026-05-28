@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<BandejaOperativaService>();
         services.AddScoped<RevisionOperativaService>();
         services.AddScoped<GestionProveedorService>();
+        services.AddScoped<ProviderReviewProjectionService>();
         services.AddScoped<RecepcionProductoService>();
         services.AddScoped<ReporteService>();
 

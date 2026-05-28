@@ -38,6 +38,30 @@ public sealed class OperationRepository : IOperationRepository
             .Include(request => request.Timeline)
             .FirstOrDefaultAsync(request => request.Id == requestId, cancellationToken);
 
+    public Task<Proveedor?> GetProviderByIdAsync(Guid providerId, CancellationToken cancellationToken = default) =>
+        _dbContext.Proveedores
+            .FirstOrDefaultAsync(provider => provider.Id == providerId, cancellationToken);
+
+    public Task<Proveedor?> GetDefaultProviderAsync(CancellationToken cancellationToken = default) =>
+        _dbContext.Proveedores
+            .OrderBy(provider => provider.Nombre)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<CasoAsignado?> GetAssignedCaseByRequestAsync(Guid requestId, CancellationToken cancellationToken = default) =>
+        _dbContext.CasosAsignados
+            .FirstOrDefaultAsync(assignedCase => assignedCase.SolicitudId == requestId, cancellationToken);
+
+    public Task<ValidacionGarantia?> GetWarrantyValidationByRequestAsync(Guid requestId, CancellationToken cancellationToken = default) =>
+        _dbContext.ValidacionesGarantia
+            .FirstOrDefaultAsync(validation => validation.SolicitudId == requestId, cancellationToken);
+
+    public Task<DictamenTecnico?> GetTechnicalReportByRequestAsync(Guid requestId, CancellationToken cancellationToken = default) =>
+        _dbContext.DictamenesTecnicos
+            .FirstOrDefaultAsync(report => report.SolicitudId == requestId, cancellationToken);
+
+    public Task AddAssignedCaseAsync(CasoAsignado assignedCase, CancellationToken cancellationToken = default) =>
+        _dbContext.CasosAsignados.AddAsync(assignedCase, cancellationToken).AsTask();
+
     public Task AddInformationRequestAsync(SolicitudInformacionAdicional informationRequest, CancellationToken cancellationToken = default) =>
         _dbContext.SolicitudesInformacionAdicional.AddAsync(informationRequest, cancellationToken).AsTask();
 }

@@ -19,6 +19,11 @@ public abstract class EstadoSolicitud
         throw InvalidTransition(nameof(EnviarARevision));
     }
 
+    public virtual void CompletarRevisionProveedor(Solicitud solicitud, string motivo, string? updatedBy = null)
+    {
+        throw InvalidTransition(nameof(CompletarRevisionProveedor));
+    }
+
     public virtual void Aprobar(Solicitud solicitud, string motivo, string? updatedBy = null)
     {
         throw InvalidTransition(nameof(Aprobar));
