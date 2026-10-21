@@ -1,103 +1,152 @@
-# DevolucionesGarantias Backend
+<p align="center">
+  <img src="docs/images/banner.svg" alt="Devoluciones y Garantías Backend Banner" width="100%">
+</p>
 
-Backend .NET 8 Web API para la App de Gestion de Devoluciones y Garantias de un e-commerce.
+<p align="center">
+  <img src="https://img.shields.io/badge/.NET%20Core-8.0%20LTS-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8">
+  <img src="https://img.shields.io/badge/Database-Supabase%20Postgres-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase Postgres">
+  <img src="https://img.shields.io/badge/Storage-Supabase%20Buckets-3ECF8E?style=for-the-badge" alt="Supabase Storage">
+  <img src="https://img.shields.io/badge/Patterns-GoF%20Design%20Patterns-6366F1?style=for-the-badge" alt="GoF Patterns">
+  <img src="https://img.shields.io/badge/Auth-JWT%20Bearer-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT">
+  <img src="https://img.shields.io/badge/License-MIT-34D399?style=for-the-badge" alt="MIT License">
+</p>
 
-## Requisitos
+<p align="center">
+  <img src="docs/images/divider.svg" width="100%">
+</p>
 
-- .NET SDK 8.x.
-- PostgreSQL compatible con Npgsql. En desarrollo se usa Supabase Postgres manteniendo la clave de configuracion `ConnectionStrings:NeonPostgres`.
-- Buckets de Supabase Storage:
-  - `evidence-files`
-  - `report-files`
+## 📦 Visión General del Sistema
 
-## Arquitectura
+**DevolucionesGarantias Backend** es un motor empresarial desarrollado con **.NET 8 Web API** bajo los principios de **Clean Architecture** (Arquitectura Hexagonal / Cebolla) para la gestión integral del servicio post-venta en plataformas de comercio electrónico.
 
-- `DevolucionesGarantias.Api`: controllers, Swagger, CORS, JWT y middleware de errores.
-- `DevolucionesGarantias.Application`: casos de uso, DTOs, validadores, mappers e interfaces.
-- `DevolucionesGarantias.Domain`: entidades, value objects, reglas de negocio y patrones Strategy, Builder, Observer, State y Facade.
-- `DevolucionesGarantias.Infrastructure`: repositorios, JWT, hashing, storage Supabase, auditoria, notificaciones y exportadores.
-- `DevolucionesGarantias.Persistence`: EF Core, configuraciones, migraciones y seeders de desarrollo.
-- `DevolucionesGarantias.Shared`: respuestas y utilidades transversales.
+El sistema administra el ciclo de vida de devoluciones monetarias, cambios físicos por insatisfacción y garantías técnicas por defecto de fábrica, integrando almacenamiento de evidencias fotográficas en **Supabase Storage**, persistencia transaccional en **PostgreSQL**, y la implementación práctica de patrones de diseño clásicos del Gang of Four (GoF) para garantizar mantenibilidad y extensibilidad extrema.
 
-## Configuracion local
+---
 
-No guardar secretos reales en archivos versionados. Usa variables de entorno, User Secrets o `appsettings*.json` local ignorado por Git.
+## 🏛️ Arquitectura por Capas y Patrones de Diseño
 
-Variables requeridas:
-
-- `ConnectionStrings__NeonPostgres`
-- `Jwt__Issuer`
-- `Jwt__Audience`
-- `Jwt__Secret`
-- `Jwt__AccessTokenExpirationMinutes`
-- `Supabase__Url`
-- `Supabase__ServiceRoleKey`
-- `Supabase__EvidenceBucket`
-- `Supabase__ReportsBucket`
-
-Ejemplo PowerShell con placeholders:
-
-```powershell
-$env:ConnectionStrings__NeonPostgres='Host=<HOST>;Port=5432;Database=<DATABASE>;Username=<USER>;Password=<PASSWORD>;SSL Mode=Require;Trust Server Certificate=true'
-$env:Jwt__Issuer='DevolucionesGarantias'
-$env:Jwt__Audience='DevolucionesGarantias.Angular'
-$env:Jwt__Secret='<JWT_SECRET_MIN_32_CHARS>'
-$env:Jwt__AccessTokenExpirationMinutes='60'
-$env:Supabase__Url='https://<PROJECT_REF>.supabase.co'
-$env:Supabase__ServiceRoleKey='<SUPABASE_SERVICE_ROLE_KEY>'
-$env:Supabase__EvidenceBucket='evidence-files'
-$env:Supabase__ReportsBucket='report-files'
+```mermaid
+graph TD
+    Client[Cliente Angular / Web App] -->|HTTPS REST| API[DevolucionesGarantias.Api]
+    API --> APP[DevolucionesGarantias.Application]
+    APP --> DOM[DevolucionesGarantias.Domain]
+    
+    subgraph Domain Engine & GoF Patterns
+        DOM --> StatePattern[State Pattern: Ciclo de Solicitudes]
+        DOM --> StratPattern[Strategy Pattern: Políticas de Reembolso]
+        DOM --> ObsPattern[Observer Pattern: Eventos & Notificaciones]
+        DOM --> BuildPattern[Builder Pattern: Paquete de Auditoría]
+        DOM --> FacadePattern[Facade Pattern: Storage & Export]
+    end
+    
+    INFRA[DevolucionesGarantias.Infrastructure] -->|Implementación| APP
+    PERSIST[DevolucionesGarantias.Persistence] -->|EF Core Migrations| DB[(Supabase PostgreSQL)]
+    INFRA --> Storage[(Supabase Storage: evidence-files & report-files)]
 ```
 
-## Comandos
+---
 
-Desde esta carpeta:
+## 🧩 Implementación de Patrones de Diseño (GoF)
 
+La capa de dominio modela comportamientos complejos mediante patrones formales:
+
+| Patrón GoF | Tipo | Aplicación en el Negocio |
+| :--- | :---: | :--- |
+| **State** | Comportamiento | Modela las transiciones válidas de una reclamación: `Registrada` → `EnRevisiónTécnica` → `Aprobada`/`Rechazada` → `ReembolsoEmitido`. Previene estados imposibles. |
+| **Strategy** | Comportamiento | Algoritmos intercambiables para liquidar el monto a reembolsar según la política aplicable (devolución al 100%, depreciación por uso, saldo a favor en tienda). |
+| **Observer** | Comportamiento | Desacopla la lógica de negocio del envío de notificaciones: cuando un reclamo cambia de estado, los suscriptores suscritos (email, auditoría) reaccionan asíncronamente. |
+| **Builder** | Creacional | Construcción fluida de reportes técnicos complejos y actas de devolución multi-ítem con validación en cada paso. |
+| **Facade** | Estructural | Unifica el cliente de almacenamiento en la nube de Supabase y el generador de reportes en una interfaz simplificada para la capa de aplicación. |
+
+> 📐 **Diagrama de Clases UML:** Disponible en [`docs/uml/diagrama_clases_unificado_organizado.puml`](docs/uml/diagrama_clases_unificado_organizado.puml) y especificación completa en [`docs/arquitectura-tecnica-devoluciones-garantias.md`](docs/arquitectura-tecnica-devoluciones-garantias.md).
+
+---
+
+## 🚀 Configuración y Puesta en Marcha Local
+
+### Prerrequisitos
+- **.NET SDK:** Versión 8.x
+- **PostgreSQL / Supabase:** Instancia activa con extensiones relacionales
+- **Supabase Storage:** Buckets `evidence-files` y `report-files`
+
+### 1. Variables de Entorno y Configuración
+Configura tus credenciales locales mediante variables de entorno o **.NET User Secrets**:
+
+```powershell
+$env:ConnectionStrings__NeonPostgres="Host=<HOST>;Port=5432;Database=<DATABASE>;Username=<USER>;Password=<PASSWORD>;SSL Mode=Require;Trust Server Certificate=true"
+$env:Jwt__Issuer="DevolucionesGarantias"
+$env:Jwt__Audience="DevolucionesGarantias.Angular"
+$env:Jwt__Secret="<TU_SECRETO_JWT_MINIMO_32_CARACTERES>"
+$env:Jwt__AccessTokenExpirationMinutes="60"
+$env:Supabase__Url="https://<TU_PROYECTO>.supabase.co"
+$env:Supabase__ServiceRoleKey="<TU_SERVICE_ROLE_KEY>"
+$env:Supabase__EvidenceBucket="evidence-files"
+$env:Supabase__ReportsBucket="report-files"
+```
+
+### 2. Restaurar y Compilar
 ```powershell
 dotnet restore
 dotnet build
-$env:ASPNETCORE_ENVIRONMENT='Development'
-dotnet run --project src/DevolucionesGarantias.Api
 ```
 
-Migracion inicial, solo cuando la base este configurada y nunca para resetear datos:
-
+### 3. Ejecutar Migraciones de Base de Datos
 ```powershell
 dotnet ef database update --project src/DevolucionesGarantias.Persistence --startup-project src/DevolucionesGarantias.Api
 ```
 
-## Swagger
+### 4. Iniciar el API
+```powershell
+$env:ASPNETCORE_ENVIRONMENT="Development"
+dotnet run --project src/DevolucionesGarantias.Api
+```
+- **Documentación Swagger / OpenAPI:** `http://localhost:5000/swagger`
 
-Con la API levantada:
+---
 
-- `http://localhost:5000/swagger`
-- `GET http://localhost:5000/api/health`
+## 🧪 Pruebas Unitarias y de Integración
 
-Swagger incluye Bearer JWT. Usa el boton `Authorize` con `Bearer <token>`.
+```powershell
+# Ejecutar todas las pruebas con reporte en consola
+dotnet test DevolucionesGarantias.sln --logger "console;verbosity=normal"
+```
 
-## Usuarios demo de desarrollo
+---
 
-Los usuarios demo existen solo como seed de Development:
+## 📁 Estructura del Repositorio
 
-- `cliente.demo@ecommerce.com`
-- `admin.demo@ecommerce.com`
-- `proveedor.demo@ecommerce.com`
-- `analista.demo@ecommerce.com`
+```text
+Sistema-de-Devoluciones-BackEnd/
+├── docs/
+│   ├── images/
+│   │   ├── banner.svg           # Hero banner vectorial
+│   │   └── divider.svg          # Separador decorativo
+│   ├── uml/                     # Diagramas UML de clases en PlantUML
+│   └── arquitectura-tecnica...  # Especificación de arquitectura
+├── src/
+│   ├── DevolucionesGarantias.Api/           # Endpoints, Swagger y Middleware
+│   ├── DevolucionesGarantias.Application/   # Casos de uso, DTOs y validaciones
+│   ├── DevolucionesGarantias.Domain/        # Entidades y patrones GoF
+│   ├── DevolucionesGarantias.Infrastructure/# Supabase Storage, JWT y notificaciones
+│   ├── DevolucionesGarantias.Persistence/   # EF Core, contextos y migraciones
+│   └── DevolucionesGarantias.Shared/        # Respuestas comunes y utilidades
+├── tests/
+│   ├── DevolucionesGarantias.UnitTests/     # Pruebas unitarias de dominio
+│   └── DevolucionesGarantias.Integration... # Pruebas de integración
+├── DevolucionesGarantias.sln
+└── README.md
+```
 
-La contrasena demo debe tratarse como dato local de desarrollo, nunca productivo.
+---
 
-## Flujos validados
+## 👨‍💻 Autor y Licencia
 
-- Login JWT y roles.
-- Cliente: pedidos, productos, elegibilidad, solicitudes, evidencias.
-- Administrador/Analista: dashboard, bandeja, detalle, comentarios, informacion adicional, decisiones y reportes.
-- Proveedor: casos asignados, validacion de garantia, dictamen, autorizaciones y recepcion.
-- Supabase Storage para evidencias.
-- Exportacion CSV/PDF de reportes.
+Desarrollado por **Santiago Ospina Arango**  
+- **GitHub:** [@santi-osp](https://github.com/santi-osp)  
+- **Licencia:** [MIT License](LICENSE)
 
-## Seguridad
+---
 
-- No exponer connection strings, `Jwt:Secret` ni `Supabase:ServiceRoleKey`.
-- Angular nunca debe usar `service_role`.
-- No ejecutar `database update` contra produccion sin revision.
-- No borrar tablas ni resetear esquemas durante validaciones.
+<p align="center">
+  <sub>Devoluciones & Garantías Backend · Arquitectura Limpia y Patrones de Software en .NET 8.</sub>
+</p>
